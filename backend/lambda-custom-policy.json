@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3Access",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::healthcare-claims-uploads-183014599760/*",
+        "arn:aws:s3:::healthcare-claims-uploads-183014599760",
+        "arn:aws:s3:::healthcare-claims-processed-183014599760/*",
+        "arn:aws:s3:::healthcare-claims-processed-183014599760",
+        "arn:aws:s3:::healthcare-claims-results-183014599760/*",
+        "arn:aws:s3:::healthcare-claims-results-183014599760"
+      ]
+    },
+    {
+      "Sid": "DynamoDBAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:183014599760:table/HealthcareClaims",
+        "arn:aws:dynamodb:us-east-1:183014599760:table/HealthcareClaims/index/*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:183014599760:log-group:/aws/lambda/*"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+[
+  {
+    "patient_name": "Michael Wilson",
+    "dob": "1997-11-02",
+    "gender": "M",
+    "member_id": "MEM143133",
+    "date_of_service": "2025-12-30",
+    "provider": "Dr. Provider 4",
+    "facility": "Springfield Medical Center",
+    "diagnoses": [
+      "M54.5",
+      "M79.3"
+    ],
+    "procedures": [
+      "99214"
+    ],
+    "total_charge": 1480.72,
+    "insurance_paid": 1316.83
+  },
+  {
+    "patient_name": "Patricia Brown",
+    "dob": "1956-02-15",
+    "gender": "F",
+    "member_id": "MEM843647",
+    "date_of_service": "2025-12-18",
+    "provider": "Dr. Provider 3",
+    "facility": "Springfield Medical Center",
+    "diagnoses": [
+      "I10"
+    ],
+    "procedures": [
+      "80053",
+      "71020"
+    ],
+    "total_charge": 629.54,
+    "insurance_paid": 840.43
+  },
+  {
+    "patient_name": "Robert Davis",
+    "dob": "1991-10-22",
+    "gender": "F",
+    "member_id": "MEM362341",
+    "date_of_service": "2025-12-24",
+    "provider": "Dr. Provider 4",
+    "facility": "Springfield Medical Center",
+    "diagnoses": [
+      "E11.9",
+      "M79.3"
+    ],
+    "procedures": [
+      "99214"
+    ],
+    "total_charge": 1736.16,
+    "insurance_paid": 1100.09
+  },
+  {
+    "patient_name": "Patricia Brown",
+    "dob": "1957-08-17",
+    "gender": "M",
+    "member_id": "MEM970318",
+    "date_of_service": "2026-01-09",
+    "provider": "Dr. Provider 1",
+    "facility": "Springfield Medical Center",
+    "diagnoses": [
+      "M79.3"
+    ],
+    "procedures": [
+      "99213"
+    ],
+    "total_charge": 976.27,
+    "insurance_paid": 1677.06
+  },
+  {
+    "patient_name": "Mary Johnson",
+    "dob": "1982-06-26",
+    "gender": "F",
+    "member_id": "MEM455975",
+    "date_of_service": "2026-01-06",
+    "provider": "Dr. Provider 2",
+    "facility": "Springfield Medical Center",
+    "diagnoses": [
+      "M54.5"
+    ],
+    "procedures": [
+      "71020",
+      "99213"
+    ],
+    "total_charge": 510.1,
+    "insurance_paid": 299.19
+  }
+]

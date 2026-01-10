@@ -1,0 +1,16 @@
+{
+    "Content": {
+        "Location": "https://prod-04-2014-layers.s3.us-east-1.amazonaws.com/snapshots/183014599760/healthcare-pdf-processing-b892d5ba-80fd-473f-ba78-db1b6bd346ce?versionId=dsCY_diEbDNERROXMtU.x3HTfb6NtxdP&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEOD%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIFFyTjrPY2%2BB4hg0cLTDE0jL0dWCQ2XAtmqK%2B2VEqtAvAiBkeiccNTT6ZDHXtcRKEmzVCWaSUXkdBH5RaK4Rfl%2B2uSq6BQio%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAAaDDc0OTY3ODkwMjgzOSIMsclA8Rl4gGsrkQhcKo4FpP0YeGfuIVA1YGNPu860M9vRV%2BiCDoxyVgami0wIOwM%2BKh0bA2aDnj%2BmyyNJpd%2FGFA6PFAiteAS%2F4yaCvFPL3yt5VoxVqLZfygyAgDHgRXXznB8ly0kmzlCHBCcxiOB8MYLH3l3BRBdfcflPTRRQkTL4ovhFQ7CPLRFekK7UQ1CuzN%2FD01IoADhOLkJUdIiWCs9VjLNzVzwkgJW01u%2Fy59UCxdK8CU%2BWfcsTGlNsZJTNVK2ZuOMraF8UxUB1XxJSInQJDdsNrGTrY%2FZE6OemBkNUWX0AGIJrDMLuoGZSAQ8tY0JMciDATSaZIEWNKL%2FTuOlUiFVS2ctoCB6Rq16qGlF6kl1ISk8lcyBYro%2Btfbcpksgi%2BVlgDdwrbYqHNX3gFIDICUDiaWCeBj9mlbR1jbPCOtBPJUhyxXrgO6L%2FnSKbexjs7PyMW3Re%2BerBJd%2FHAOuM%2FMHFWMQxm4Z5MM1ZRRgIsBTSGzRRnZNQ14bliJH%2FSt75pwyimaM7PRlF3IrucfZOwAgE4RKrD%2BAFLSWBQYt3UTgdmkPgcUoHt8%2FdlYeoxqmBXlrOnmjctGoKVSTeuV1LHkkM5OEmtvw9qsN7ixBGuUKew7O%2B4XqcTsBQFNu9kENAh0MRt9KgWPvqdEO2ouIGAyJxtwFQa0IjOQewsb%2B6noZ8hp27aVP8TEF0jx9lYDcx%2BVX8uS8uEmSgMRpAigke5sDEICI9FjXnKv9v7pCs8XoeyHrj5T%2Bcr9zbfue0StQrwXf%2FIpxoyQU1ApXS8dXdtsBL%2F0fRZCCAu5H9n1CGSylzEaaf%2B6pR0wkm10mEgpdmO%2FY0i7%2BnoXn7Ik%2BfpWNGsLN4anAYUZybOjVALeu9tGC6NNmwGtmkraSfMNO2hMsGOrIBUnZVNa8dPq4%2FSwNbHBreFaRXJTGMSPmvBNiuyBngBDZ1RJaK9qxHR55So1T6HvfssENeivroHowCdf6BIfGAUCjBjxQrAeRmLeDnGOsQpP8zMfmymyAs4HzQ72xkBHjHp%2BO%2FWi%2BbKaEeDli1XNSqMkLnPUfcJKirSkFbZXDUg1lfQUzY8ZdoN93dKXFXMbPX7%2FOXrbMKEuFg%2F%2BfpP6%2FyBGM8KgqIFjwgvpVU1W7tofg6RA%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20260109T154853Z&X-Amz-SignedHeaders=host&X-Amz-Expires=599&X-Amz-Credential=ASIA25DCYHY3Z5MLR3E7%2F20260109%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=028ce4bf96347c3150e249f3c3a355560a78c9acd225d032e9cca37b7db4b132",
+        "CodeSha256": "dJ+D3rhJBeVC4LG7m8U3VRddKrhjixfvwDWH8mgqDs8=",
+        "CodeSize": 39691670
+    },
+    "LayerArn": "arn:aws:lambda:us-east-1:183014599760:layer:healthcare-pdf-processing",
+    "LayerVersionArn": "arn:aws:lambda:us-east-1:183014599760:layer:healthcare-pdf-processing:1",
+    "Description": "Free PDF processing libraries (PyPDF2, pdfplumber)",
+    "CreatedDate": "2026-01-09T15:48:58.137+0000",
+    "Version": 1,
+    "CompatibleRuntimes": [
+        "python3.11",
+        "python3.12"
+    ]
+}

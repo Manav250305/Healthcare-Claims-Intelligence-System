@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+.npm/
+.next/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+*.pem
+*.key
+
+# AWS
+.aws/
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
