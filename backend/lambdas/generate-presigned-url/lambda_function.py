@@ -7,6 +7,14 @@ from urllib.parse import unquote_plus
 s3_client = boto3.client('s3')
 UPLOAD_BUCKET = os.environ.get('UPLOAD_BUCKET', '')
 
+# CORS headers - REQUIRED for all responses
+CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+    'Access-Control-Allow-Methods': 'GET,OPTIONS,POST,PUT'
+}
+
 def lambda_handler(event, context):
     """Generate pre-signed URL for secure S3 upload"""
     
@@ -20,10 +28,7 @@ def lambda_handler(event, context):
         if not params or 'filename' not in params:
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'application/json'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Missing filename parameter'})
             }
         
@@ -39,10 +44,7 @@ def lambda_handler(event, context):
         if file_extension not in allowed_extensions:
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'application/json'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({
                     'error': f'Invalid file type. Allowed: {", ".join(allowed_extensions)}'
                 })
@@ -66,10 +68,7 @@ def lambda_handler(event, context):
         
         return {
             'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({
                 'uploadUrl': presigned_url,
                 'fileKey': s3_key,
@@ -81,11 +80,9 @@ def lambda_handler(event, context):
         print(f"❌ Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        
         return {
             'statusCode': 500,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': 'Internal server error'})
         }

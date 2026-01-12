@@ -7,6 +7,14 @@ from urllib.parse import unquote
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ.get('TABLE_NAME', 'HealthcareClaims'))
 
+# CORS headers to include in all responses
+CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+    'Access-Control-Allow-Methods': 'GET,OPTIONS'
+}
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
@@ -15,23 +23,17 @@ class DecimalEncoder(json.JSONEncoder):
 
 def lambda_handler(event, context):
     try:
-        # Get claim_id from path parameters (supports proxy+, id, and claim_id)
+        # Get claim_id from path parameters
         path_params = event.get('pathParameters', {})
         claim_id = path_params.get('proxy') or path_params.get('id') or path_params.get('claim_id')
         
         if claim_id:
-            # URL decode the claim_id (handles slashes and special characters)
             claim_id = unquote(claim_id)
         
         if not claim_id:
             return {
                 'statusCode': 400,
-                'headers': {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                    'Content-Type': 'application/json'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Missing claim_id'})
             }
         
@@ -42,24 +44,14 @@ def lambda_handler(event, context):
             print(f"Claim not found: {claim_id}")
             return {
                 'statusCode': 404,
-                'headers': {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                    'Content-Type': 'application/json'
-                },
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Claim not found', 'claim_id': claim_id})
             }
         
         print(f"Claim found successfully")
         return {
             'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Content-Type': 'application/json'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps(response['Item'], cls=DecimalEncoder)
         }
         
@@ -70,9 +62,6 @@ def lambda_handler(event, context):
         
         return {
             'statusCode': 500,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            },
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': str(e)})
         }

@@ -3,10 +3,13 @@ import boto3
 import os
 import time
 
+
 lambda_client = boto3.client('lambda')
 dynamodb = boto3.resource('dynamodb')
 
+
 RESULTS_TABLE = os.environ['RESULTS_TABLE']
+
 
 def lambda_handler(event, context):
     """
@@ -20,12 +23,15 @@ def lambda_handler(event, context):
         if not claim_id:
             # Try to extract from DynamoDB stream event
             if 'Records' in event:
-                record = event['Records'][0]
+                record = event['Records']
                 if record['eventName'] == 'INSERT':
                     claim_id = record['dynamodb']['Keys']['claim_id']['S']
         
         if not claim_id:
-            return {'statusCode': 400, 'body': json.dumps({'error': 'Missing claim_id'})}
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Missing claim_id'})
+            }
         
         print(f"🚀 Starting orchestration for claim: {claim_id}")
         
@@ -34,7 +40,10 @@ def lambda_handler(event, context):
         response = table.get_item(Key={'claim_id': claim_id})
         
         if 'Item' not in response:
-            return {'statusCode': 404, 'body': json.dumps({'error': 'Claim not found'})}
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': 'Claim not found'})
+            }
         
         claim_data = response['Item']
         

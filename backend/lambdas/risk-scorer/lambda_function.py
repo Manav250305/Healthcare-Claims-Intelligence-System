@@ -1,10 +1,13 @@
 import json
 import boto3
+import os
 from datetime import datetime
 from decimal import Decimal
 
+
 dynamodb = boto3.resource('dynamodb')
 RESULTS_TABLE = os.environ['RESULTS_TABLE']
+
 
 def lambda_handler(event, context):
     """
@@ -20,7 +23,10 @@ def lambda_handler(event, context):
         response = table.get_item(Key={'claim_id': claim_id})
         
         if 'Item' not in response:
-            return {'statusCode': 404, 'body': json.dumps({'error': 'Claim not found'})}
+            return {
+                'statusCode': 404,
+                'body': json.dumps({'error': 'Claim not found'})
+            }
         
         claim_data = response['Item']
         medical_entities = claim_data.get('medical_entities', {})
@@ -232,6 +238,7 @@ def lambda_handler(event, context):
         print(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})

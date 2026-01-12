@@ -4,13 +4,17 @@ import os
 from datetime import datetime
 from decimal import Decimal
 
+
 dynamodb = boto3.resource('dynamodb')
 secretsmanager = boto3.client('secretsmanager')
+
 
 RESULTS_TABLE = os.environ['RESULTS_TABLE']
 SECRET_NAME = os.environ.get('SECRET_NAME', 'healthcare-claim/openai-key')
 
+
 CACHED_API_KEY = None
+
 
 def get_openai_key():
     """Retrieve OpenAI key from Secrets Manager (cached)"""
@@ -89,6 +93,7 @@ def lambda_handler(event, context):
         print(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
@@ -105,7 +110,9 @@ def extract_with_openai(text, api_key):
         
         prompt = f"""Extract medical information from this claim and return as JSON:
 
+
 {text_sample}
+
 
 Return ONLY valid JSON with this structure:
 {{
@@ -128,13 +135,13 @@ Return ONLY valid JSON with this structure:
             max_tokens=500
         )
         
-        medical_data_str = response.choices[0].message.content.strip()
+        medical_data_str = response.choices.message.content.strip()
         
         # Clean markdown code blocks
         if '```json' in medical_data_str:
-            medical_data_str = medical_data_str.split('```json').split('```').strip()[1]
+            medical_data_str = medical_data_str.split('```json').split('```').strip()
         elif '```' in medical_data_str:
-            medical_data_str = medical_data_str.split('```')[1].split('```')[0].strip()
+            medical_data_str = medical_data_str.split('```').split('```').strip()
         
         medical_data = json.loads(medical_data_str)
         medical_data['extraction_method'] = 'openai'
@@ -186,7 +193,7 @@ def extract_with_rules(text, key_value_pairs):
     # Extract CPT codes
     cpt_pattern = r'\bCPT[:\s]*(\d{5})\b|\b(\d{5})\b(?=.*procedure)'
     cpt_matches = re.findall(cpt_pattern, text, re.IGNORECASE)
-    medical_data['procedure_codes'] = list(set([m[0] or m[1] for m in cpt_matches if m[0] or m[1]]))
+    medical_data['procedure_codes'] = list(set([m or m for m in cpt_matches if m or m]))
     
     # Extract medications
     medication_pattern = r'\b([A-Z][a-z]+(?:in|ol|ide|mab|tinib))\b'
