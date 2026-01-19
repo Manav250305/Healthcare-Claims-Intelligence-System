@@ -1,27 +1,34 @@
-FROM python:3.10-slim-bookworm
+FROM python:3.9-slim
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements first (better caching)
 COPY requirements.txt .
+
+# Install Python dependencies (NO torch here)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download model at build time
-RUN python3 -c "from transformers import AutoTokenizer, AutoModelForTokenClassification; \
-    AutoTokenizer.from_pretrained('emilyalsentzer/Bio_ClinicalBERT'); \
-    AutoModelForTokenClassification.from_pretrained('emilyalsentzer/Bio_ClinicalBERT')"
+# Install CPU-only PyTorch explicitly
+RUN pip install --no-cache-dir torch==2.1.0+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
 
-# Copy app
-COPY app.py .
+# Copy application code
+COPY . .
 
-EXPOSE 8080
+# Expose port
+EXPOSE 80
 
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:8080/health || exit 1
+    CMD curl -f http://localhost/health || exit 1
 
-CMD ["python3", "app.py"]
+# Run app
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]

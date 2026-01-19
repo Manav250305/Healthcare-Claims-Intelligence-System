@@ -1,7 +1,26 @@
-fastapi>=0.104.0,<0.110.0
-uvicorn[standard]>=0.24.0,<0.30.0
-transformers>=4.35.0,<5.0.0
-torch>=2.1.0,<3.0.0
-pydantic>=2.5.0,<3.0.0
-boto3>=1.34.0
-nvidia-ml-py3>=7.352.0
+# Web
+Flask==3.0.0
+gunicorn==21.2.0
+Werkzeug==3.0.1
+python-multipart==0.0.6
+
+# Transformers
+transformers==4.36.0
+tokenizers==0.15.0
+huggingface-hub==0.20.0
+
+# AWS
+boto3==1.34.0
+botocore==1.34.0
+
+# Utils
+python-dotenv==1.0.0
+requests==2.31.0
+
+# PDF
+PyPDF2==3.0.1
+
+# Scientific
+numpy==1.26.4
+scipy==1.11.4
+tqdm==4.66.1

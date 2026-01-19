@@ -11,15 +11,58 @@ const ClaimView = () => {
   const [loading, setLoading] = useState(!claim);
   const [error, setError] = useState('');
 
+  // 🔧 Helper function to unmarshall DynamoDB data
+  const unmarshallValue = (value) => {
+    if (!value) return null;
+    if (value.S !== undefined) return value.S;
+    if (value.N !== undefined) return Number(value.N);
+    if (value.BOOL !== undefined) return value.BOOL;
+    if (value.M !== undefined) return unmarshallMap(value.M);
+    if (value.L !== undefined) return unmarshallList(value.L);
+    return value;
+  };
+
+  const unmarshallMap = (map) => {
+    const result = {};
+    for (const [key, value] of Object.entries(map)) {
+      result[key] = unmarshallValue(value);
+    }
+    return result;
+  };
+
+  const unmarshallList = (list) => {
+    return list.map(item => unmarshallValue(item));
+  };
+
+  const unmarshallClaim = (rawClaim) => {
+    if (!rawClaim) return null;
+    
+    // If already unmarshalled (plain objects), return as-is
+    if (!rawClaim.claim_id?.S && typeof rawClaim.claim_id === 'string') {
+      return rawClaim;
+    }
+
+    // Unmarshall the entire claim object
+    const unmarshalled = {};
+    for (const [key, value] of Object.entries(rawClaim)) {
+      unmarshalled[key] = unmarshallValue(value);
+    }
+    return unmarshalled;
+  };
+
   useEffect(() => {
     if (!claim) {
       loadClaim();
+    } else {
+      // Unmarshall existing claim data
+      setClaim(unmarshallClaim(claim));
     }
   }, []);
 
   const loadClaim = async () => {
     try {
-      const data = await getClaim(decodeURIComponent(claimId));
+      const rawData = await getClaim(decodeURIComponent(claimId));
+      const data = unmarshallClaim(rawData);
       setClaim(data);
     } catch (err) {
       setError('Failed to load claim details');
@@ -83,7 +126,7 @@ const ClaimView = () => {
             <FileText className="w-8 h-8 text-blue-600 mr-3" />
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Claim Details</h1>
-              <p className="text-sm text-gray-500 font-mono">{claimId}</p>
+              <p className="text-sm text-gray-500 font-mono break-all">{claimId}</p>
             </div>
           </div>
         </div>
@@ -216,7 +259,7 @@ const ClaimView = () => {
                 </p>
                 {medicalEntities.cost?.estimated_usd && (
                   <p className="text-xs text-gray-500">
-                    Processing cost: ${medicalEntities.cost.estimated_usd}
+                    Processing cost: ${medicalEntities.cost.estimated_usd.toFixed(6)}
                   </p>
                 )}
               </div>

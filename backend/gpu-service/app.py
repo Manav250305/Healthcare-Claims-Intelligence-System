@@ -1,198 +1,260 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
 import torch
-from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-import boto3
-import time
+from transformers import AutoTokenizer, AutoModel, pipeline
+import os
+import logging
 from datetime import datetime
-import uvicorn
+import boto3
+import json
 
-app = FastAPI(title="Claims GPU Service", version="1.0.0")
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Initialize CloudWatch client
-cloudwatch = boto3.client('cloudwatch', region_name='us-east-1')
+app = Flask(__name__)
 
-# Load medical NLP model (BioClinicalBERT or similar)
+# Initialize CloudWatch client for custom metrics
+cloudwatch = boto3.client('cloudwatch', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+
+# Model configuration
 MODEL_NAME = "emilyalsentzer/Bio_ClinicalBERT"
-print(f"Loading model: {MODEL_NAME}")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME)
+device = "cpu"
 
-# Check GPU availability
-device = "cpu"  # t3.micro doesn't have GPU
-model = model.to(device)
-print(f"Model loaded on device: {device}")
+# Global model variables
+tokenizer = None
+model = None
+qa_pipeline = None
 
-# Create NER pipeline
-ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer, device=0 if device == "cuda" else -1)
+def initialize_model():
+    """Initialize Bio_ClinicalBERT model for CPU inference"""
+    global tokenizer, model, qa_pipeline
+    
+    try:
+        logger.info(f"Loading {MODEL_NAME} on CPU...")
+        
+        # Load tokenizer and model
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        model = AutoModel.from_pretrained(MODEL_NAME)
+        
+        # Set model to evaluation mode and optimize for CPU
+        model.eval()
+        model.to(device)
+        
+        # Create question-answering pipeline
+        qa_pipeline = pipeline(
+            "question-answering",
+            model=MODEL_NAME,
+            tokenizer=MODEL_NAME,
+            device=-1  # CPU inference
+        )
+        
+        logger.info("Model loaded successfully")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error loading model: {str(e)}")
+        return False
 
-class ClaimRequest(BaseModel):
-    claim_id: str
-    text: str
-    analysis_tier: str = "pro"
+# Initialize model on startup
+initialize_model()
 
-class DetailedAnalysis(BaseModel):
-    diagnoses: list
-    procedures: list
-    medications: list
-    risk_factors: list
-    confidence_scores: dict
-    recommendations: list
-    processing_time_seconds: float
-
-class ClaimResponse(BaseModel):
-    claim_id: str
-    entities: list
-    detailed_analysis: DetailedAnalysis
-    gpu_used: bool
-    model_name: str
-
-def publish_metrics(processing_time, success=True, gpu_util=0):
-    """Publish custom metrics to CloudWatch"""
+def send_cloudwatch_metric(metric_name, value, unit='Count'):
+    """Send custom metrics to CloudWatch"""
     try:
         cloudwatch.put_metric_data(
-            Namespace='ClaimsGPUService',
+            Namespace='HealthcareClaims/ProService',
             MetricData=[
                 {
-                    'MetricName': 'ProcessingTime',
-                    'Value': processing_time,
-                    'Unit': 'Seconds',
-                    'Timestamp': datetime.utcnow()
-                },
-                {
-                    'MetricName': 'RequestCount',
-                    'Value': 1,
-                    'Unit': 'Count',
-                    'Timestamp': datetime.utcnow()
-                },
-                {
-                    'MetricName': 'SuccessRate',
-                    'Value': 1 if success else 0,
-                    'Unit': 'Count',
-                    'Timestamp': datetime.utcnow()
-                },
-                {
-                    'MetricName': 'GPUUtilization',
-                    'Value': gpu_util,
-                    'Unit': 'Percent',
+                    'MetricName': metric_name,
+                    'Value': value,
+                    'Unit': unit,
                     'Timestamp': datetime.utcnow()
                 }
             ]
         )
     except Exception as e:
-        print(f"Failed to publish metrics: {e}")
+        logger.error(f"Error sending CloudWatch metric: {str(e)}")
 
-def get_gpu_usage():
-    """Get current GPU utilization"""
+def analyze_medical_document(text, query):
+    """Analyze medical document using Bio_ClinicalBERT"""
     try:
-        if not torch.cuda.is_available():
-            return 0
-        import pynvml
-        pynvml.nvmlInit()
-        handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-        util = pynvml.nvmlDeviceGetUtilizationRates(handle)
-        return util.gpu
-    except:
-        return 0
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint for ALB"""
-    gpu_available = torch.cuda.is_available()
-    gpu_util = get_gpu_usage() if gpu_available else 0
-    
-    return {
-        "status": "healthy",
-        "gpu_available": gpu_available,
-        "gpu_utilization": gpu_util,
-        "model": MODEL_NAME,
-        "device": device
-    }
-
-@app.post("/analyze", response_model=ClaimResponse)
-def analyze_claim(request: ClaimRequest):
-    """Pro-tier medical claim analysis with GPU acceleration"""
-    start_time = time.time()
-    
-    try:
-        print(f"Processing claim {request.claim_id} with GPU analysis")
+        # Use question-answering pipeline
+        result = qa_pipeline(question=query, context=text)
         
-        # Run NER on extracted text
-        entities_raw = ner_pipeline(request.text[:512])  # Limit text length
+        # Get embeddings for detailed analysis
+        inputs = tokenizer(text, return_tensors="pt", 
+                          truncation=True, max_length=512, padding=True)
         
-        # Group entities by type
-        diagnoses = []
-        procedures = []
-        medications = []
+        with torch.no_grad():
+            outputs = model(**inputs)
+            embeddings = outputs.last_hidden_state
         
-        for ent in entities_raw:
-            if ent['entity'].startswith('B-'):  # Beginning of entity
-                entity_type = ent['entity'][2:]
-                if 'DIAGNOSIS' in entity_type or 'DISEASE' in entity_type:
-                    diagnoses.append({
-                        "text": ent['word'],
-                        "confidence": round(ent['score'], 3)
-                    })
-                elif 'PROCEDURE' in entity_type or 'TREATMENT' in entity_type:
-                    procedures.append({
-                        "text": ent['word'],
-                        "confidence": round(ent['score'], 3)
-                    })
-                elif 'MEDICATION' in entity_type or 'DRUG' in entity_type:
-                    medications.append({
-                        "text": ent['word'],
-                        "confidence": round(ent['score'], 3)
-                    })
+        # Extract key medical entities and insights
+        analysis = {
+            "answer": result['answer'],
+            "confidence": result['score'],
+            "embedding_shape": list(embeddings.shape),
+            "document_length": len(text),
+            "tokens_processed": inputs['input_ids'].shape[1]
+        }
         
-        # Risk factor analysis
-        risk_factors = []
-        risk_keywords = ['diabetes', 'hypertension', 'cancer', 'chronic', 'severe']
-        for keyword in risk_keywords:
-            if keyword.lower() in request.text.lower():
-                risk_factors.append(keyword.capitalize())
-        
-        # Generate recommendations
-        recommendations = []
-        if len(diagnoses) > 3:
-            recommendations.append("Multiple diagnoses detected - verify medical necessity")
-        if len(medications) > 5:
-            recommendations.append("High medication count - check for drug interactions")
-        if risk_factors:
-            recommendations.append(f"Risk factors present: {', '.join(risk_factors)}")
-        
-        processing_time = time.time() - start_time
-        gpu_util = get_gpu_usage()
-        
-        # Publish metrics to CloudWatch
-        publish_metrics(processing_time, success=True, gpu_util=gpu_util)
-        
-        detailed_analysis = DetailedAnalysis(
-            diagnoses=diagnoses,
-            procedures=procedures,
-            medications=medications,
-            risk_factors=risk_factors,
-            confidence_scores={
-                "overall": round(sum([e['confidence'] for e in diagnoses + procedures + medications]) / max(len(diagnoses + procedures + medications), 1), 3),
-                "diagnosis": round(sum([e['confidence'] for e in diagnoses]) / max(len(diagnoses), 1), 3),
-                "procedure": round(sum([e['confidence'] for e in procedures]) / max(len(procedures), 1), 3),
-                "medication": round(sum([e['confidence'] for e in medications]) / max(len(medications), 1), 3)
-            },
-            recommendations=recommendations,
-            processing_time_seconds=round(processing_time, 3)
-        )
-        
-        return ClaimResponse(
-            claim_id=request.claim_id,
-            entities=entities_raw[:20],  # Limit response size
-            detailed_analysis=detailed_analysis,
-            gpu_used=torch.cuda.is_available(),
-            model_name=MODEL_NAME
-        )
+        return analysis
         
     except Exception as e:
-        processing_time = time.time() - start_time
-        publish_metrics(processing_time, success=False, gpu_util=get_gpu_usage())
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in document analysis: {str(e)}")
+        raise
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+def extract_medical_insights(text):
+    """Extract comprehensive medical insights from document"""
+    insights = {}
+    
+    # Define key questions for medical document analysis
+    questions = [
+        "What is the primary diagnosis?",
+        "What treatments are recommended?",
+        "What medications are prescribed?",
+        "What are the test results?",
+        "What is the patient's condition?"
+    ]
+    
+    for question in questions:
+        try:
+            result = qa_pipeline(question=question, context=text[:2000])
+            if result['score'] > 0.1:  # Confidence threshold
+                insights[question] = {
+                    "answer": result['answer'],
+                    "confidence": round(result['score'], 3)
+                }
+        except:
+            continue
+    
+    return insights
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for ALB"""
+    if model is not None and tokenizer is not None:
+        return jsonify({
+            "status": "healthy",
+            "model": MODEL_NAME,
+            "device": device,
+            "timestamp": datetime.utcnow().isoformat()
+        }), 200
+    else:
+        return jsonify({
+            "status": "unhealthy",
+            "error": "Model not loaded"
+        }), 503
+
+@app.route('/analyze', methods=['POST'])
+def analyze_document():
+    """Main endpoint for Pro version document analysis"""
+    start_time = datetime.utcnow()
+    
+    try:
+        # Validate request
+        if not request.json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        document_text = request.json.get('document_text', '')
+        query = request.json.get('query', 'Summarize the medical document')
+        user_id = request.json.get('user_id', 'unknown')
+        
+        if not document_text:
+            return jsonify({"error": "document_text is required"}), 400
+        
+        logger.info(f"Processing request for user: {user_id}")
+        
+        # Perform analysis
+        analysis_result = analyze_medical_document(document_text, query)
+        
+        # Extract comprehensive insights
+        insights = extract_medical_insights(document_text)
+        
+        # Calculate processing time
+        processing_time = (datetime.utcnow() - start_time).total_seconds()
+        
+        # Send metrics to CloudWatch
+        send_cloudwatch_metric('RequestsProcessed', 1)
+        send_cloudwatch_metric('ProcessingTime', processing_time * 1000, 'Milliseconds')
+        
+        response = {
+            "status": "success",
+            "model": MODEL_NAME,
+            "service_tier": "pro",
+            "analysis": analysis_result,
+            "insights": insights,
+            "processing_time_seconds": round(processing_time, 2),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Request completed in {processing_time:.2f}s")
+        return jsonify(response), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}")
+        send_cloudwatch_metric('RequestErrors', 1)
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
+
+@app.route('/batch-analyze', methods=['POST'])
+def batch_analyze():
+    """Batch processing endpoint for multiple documents"""
+    try:
+        if not request.json or 'documents' not in request.json:
+            return jsonify({"error": "documents array is required"}), 400
+        
+        documents = request.json['documents']
+        results = []
+        
+        for idx, doc in enumerate(documents):
+            try:
+                text = doc.get('text', '')
+                query = doc.get('query', 'Summarize the medical document')
+                
+                analysis = analyze_medical_document(text, query)
+                results.append({
+                    "document_index": idx,
+                    "status": "success",
+                    "analysis": analysis
+                })
+            except Exception as e:
+                results.append({
+                    "document_index": idx,
+                    "status": "error",
+                    "error": str(e)
+                })
+        
+        send_cloudwatch_metric('BatchRequestsProcessed', len(documents))
+        
+        return jsonify({
+            "status": "success",
+            "total_documents": len(documents),
+            "results": results
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in batch processing: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/model-info', methods=['GET'])
+def model_info():
+    """Return information about the loaded model"""
+    return jsonify({
+        "model_name": MODEL_NAME,
+        "device": device,
+        "model_loaded": model is not None,
+        "service_tier": "pro",
+        "features": [
+            "Detailed medical document analysis",
+            "Clinical entity extraction",
+            "Medical question answering",
+            "Batch processing support"
+        ]
+    }), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=80, debug=False)
